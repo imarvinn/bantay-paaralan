@@ -86,6 +86,19 @@ export default function CommandCenter() {
     }
   };
 
+  // 🔄 NEW: Reset Demo Function
+  const handleResetDemo = async () => {
+    const { error } = await supabase
+      .from('room_status')
+      .upsert({ id: 'room-204', status: 'secure' });
+
+    if (error) {
+      console.error("Failed to reset:", error);
+    } else {
+      console.log("System reset for next demonstration.");
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-gray-950 text-white p-10 font-mono">Initializing Tactical Feed...</div>;
   }
@@ -95,7 +108,15 @@ export default function CommandCenter() {
       <header className="mb-8 border-b border-gray-800 pb-4 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold uppercase tracking-widest text-blue-500">Talisay CDRRMO</h1>
-          <h2 className="text-xl text-gray-400 mt-1">Tactical Command Center - Live Feed</h2>
+          <div className="flex items-center gap-4 mt-1">
+            <h2 className="text-xl text-gray-400">Tactical Command Center - Live Feed</h2>
+            <button 
+              onClick={() => router.push('/command-center/teachers')}
+              className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 py-1 px-3 rounded border border-gray-700"
+            >
+              ⚙️ Manage Classrooms
+            </button>
+          </div>
         </div>
         <div className="text-sm font-mono text-gray-500 flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
@@ -127,6 +148,14 @@ export default function CommandCenter() {
           })
         )}
       </div>
+{/* 🔄 NEW: Reset Demo Button */}
+      <button 
+        onClick={handleResetDemo}
+        className="fixed bottom-4 right-4 bg-gray-800 hover:bg-gray-700 text-gray-500 text-xs py-2 px-4 rounded-full border border-gray-800 transition-colors"
+      >
+        🔄 Reset Demo
+      </button>
+
     </div>
   );
 }

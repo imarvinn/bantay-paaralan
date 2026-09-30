@@ -1,0 +1,22 @@
+{
+  "name": "BantayPaaralan Emergency System",
+  "short_name": "Bantay Paraalan",
+  "description": "Silent emergency crisis telemetry system for schools.",
+  "start_url": "/login",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#b91c1c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

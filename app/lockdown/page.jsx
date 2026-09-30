@@ -6,54 +6,140 @@ import { supabase } from "../supabase";
 
 export default function QuickLock() {
   const [roomStatus, setRoomStatus] = useState(null);
-  const [elapsedTime, setElapsedTime] = useState("02:45");
+  const [elapsedTime, setElapsedTime] = useState("00:00");
   const [isSending, setIsSending] = useState(false);
+  
+  const [myRoom, setMyRoom] = useState(null); 
+  const [needsPasswordChange, setNeedsPasswordChange] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
   const router = useRouter();
 
-  // 🔒 SECURITY CHECK: Kick unauthenticated users back to login
+  // 🔒 SECURITY CHECK & ROOM ASSIGNMENT
   useEffect(() => {
-    const checkUser = async () => {
+    const checkUserAndRoom = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login'); 
+        return;
+      }
+
+      const userEmail = session.user.email;
+
+      const { data, error } = await supabase
+        .from('room_status')
+        .select('id, needs_password_change')
+        .eq('assigned_email', userEmail)
+        .single(); 
+
+      if (data) {
+        setMyRoom(data.id);
+        // Check if they need to change their password
+        if (data.needs_password_change) {
+          setNeedsPasswordChange(true);
+        }
+      } else {
+        alert(`No room assigned to ${userEmail} yet. Contact CDRRMO.`);
       }
     };
-    checkUser();
+    checkUserAndRoom();
   }, [router]);
 
   const statuses = [
-    {
-      id: "secure",
-      label: "SECURE: Locked, 34 students ok",
-      color: "bg-green-600 hover:bg-green-500",
-      icon: "🟢",
-    },
-    {
-      id: "medical",
-      label: "MEDICAL NEEDED: Injury in room",
-      color: "bg-yellow-600 hover:bg-yellow-500",
-      icon: "🟡",
-    },
-    {
-      id: "breach",
-      label: "DANGER / BREACHED: Threat close",
-      color: "bg-red-600 hover:bg-red-500",
-      icon: "🔴",
-    },
+    { id: "secure", label: "SECURE: Locked, students ok", color: "bg-green-600 hover:bg-green-500", icon: "🟢" },
+    { id: "medical", label: "MEDICAL NEEDED: Injury in room", color: "bg-yellow-600 hover:bg-yellow-500", icon: "🟡" },
+    { id: "breach", label: "DANGER / BREACHED: Threat close", color: "bg-red-600 hover:bg-red-500", icon: "🔴" },
   ];
 
   const handleUpdateStatus = async (statusId) => {
+    if (!myRoom) return;
     setIsSending(true);
     setRoomStatus(statusId);
     
-    // This sends the update to your live Supabase database
     const { error } = await supabase
       .from('room_status')
-      .upsert({ id: 'room-204', status: statusId });
+      .upsert({ id: myRoom, status: statusId });
       
-    if (error) console.error("Error updating status:", JSON.stringify(error, null, 2));
+    if (!error) {
+      await fetch('/api/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room: myRoom.toUpperCase(), status: statusId }),
+      });
+    }
     setIsSending(false);
   };
+
+  // 🔐 HANDLE FORCED PASSWORD CHANGE
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
+    
+    setIsUpdatingPassword(true);
+
+    // 1. Update password in Supabase Auth
+    const { error: authError } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (authError) {
+      alert("Failed to update password: " + authError.message);
+      setIsUpdatingPassword(false);
+      return;
+    }
+
+    // 2. Mark the flag as false in our database so they don't get asked again
+    const { error: dbError } = await supabase
+      .from('room_status')
+      .update({ needs_password_change: false })
+      .eq('id', myRoom);
+
+    if (!dbError) {
+      setNeedsPasswordChange(false); // Removes the screen and shows the dashboard!
+    }
+    setIsUpdatingPassword(false);
+  };
+
+  // 📺 UI 1: FORCED PASSWORD CHANGE SCREEN
+  if (needsPasswordChange) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex justify-center items-center p-6 font-sans">
+        <div className="w-full max-w-md bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-2xl">
+          <h2 className="text-2xl font-bold text-red-500 mb-2">Security Required</h2>
+          <p className="text-gray-400 mb-6 text-sm">
+            You are currently using a default setup password. For security purposes, you must create a new private password before accessing the emergency system.
+          </p>
+          <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">New Password</label>
+              <input 
+                type="password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min 6 chars)"
+                className="w-full bg-gray-950 border border-gray-700 rounded p-3 text-white focus:outline-none focus:border-blue-500"
+                required
+              />
+            </div>
+            <button 
+              type="submit" 
+              disabled={isUpdatingPassword}
+              className="w-full bg-blue-700 hover:bg-blue-600 disabled:bg-blue-900 text-white font-bold py-3 rounded transition-colors mt-2"
+            >
+              {isUpdatingPassword ? 'Updating Security...' : 'Save & Continue'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 📺 UI 2: THE MAIN LOCKDOWN DASHBOARD
+  if (!myRoom) return <div className="min-h-screen bg-gray-950 text-white p-10">Authenticating Room...</div>;
 
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans flex justify-center">
@@ -79,11 +165,13 @@ export default function QuickLock() {
           </ul>
         </div>
 
-        <div className="px-5 mb-4">
-          <p className="text-gray-400 text-sm">YOUR LOCATION:</p>
-          <div className="bg-gray-800 px-4 py-3 rounded-md mt-1 font-mono text-lg border border-gray-700 flex justify-between">
-            <span>Room 204 - Grade 10-A</span>
-            {isSending && <span className="text-xs text-blue-400 animate-pulse">Sending...</span>}
+        <div className="px-5 mb-4 flex justify-between items-end">
+          <div>
+            <p className="text-gray-400 text-sm">YOUR LOCATION:</p>
+            <div className="bg-gray-800 px-4 py-3 rounded-md mt-1 font-mono text-lg border border-gray-700 uppercase flex items-center gap-3">
+              {myRoom.replace('-', ' ')}
+              {isSending && <span className="text-xs text-blue-400 animate-pulse">Sending...</span>}
+            </div>
           </div>
         </div>
 
@@ -106,16 +194,6 @@ export default function QuickLock() {
             ))}
           </div>
         </div>
-
-        <div className="p-4 border-t border-gray-800 bg-gray-900 pb-8">
-          <div className="text-xs text-center text-gray-500 mb-3 font-mono">
-            Campus Roll-Call: [28 Secure | 1 Injured | 1 Threat]
-          </div>
-          <button className="w-full bg-blue-700 hover:bg-blue-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-            <span>💬</span> Silent Text to Command / PNP
-          </button>
-        </div>
-        
       </div>
     </div>
   );
