@@ -1,12 +1,10 @@
 {
   "name": "Bantay Paaralan",
   "short_name": "Bantay",
-  "description": "Talisay CDRRMO Emergency Alert System",
-  "start_url": "/login",
-  "display": "standalone",
-  "background_color": "#030712",
   "theme_color": "#b91c1c",
-  "orientation": "portrait",
+  "background_color": "#030712",
+  "display": "standalone",
+  "start_url": "/",
   "icons": [
     {
       "src": "/icon-192x192.png",

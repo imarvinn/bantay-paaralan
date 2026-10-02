@@ -25,7 +25,7 @@ export default function SumbongSafe() {
         
         <div className="bg-slate-800 p-4 flex justify-between items-center">
           <h1 className="text-white font-bold text-lg flex items-center gap-2">
-            <span>🛡️</span> BantayPaaralan
+             BantayPaaralan
           </h1>
           <button 
             onClick={handleQuickExit}
@@ -39,7 +39,7 @@ export default function SumbongSafe() {
           {step === 1 && (
             <div className="space-y-6">
               <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded text-sm">
-                <p className="font-bold text-red-800">⚠️ ACTIVE ATTACK?</p>
+                <p className="font-bold text-red-800">ACTIVE ATTACK?</p>
                 <p className="text-red-700 mt-1">If there is gunfire or immediate danger right now, do not use this form.</p>
                 <a href="tel:911" className="block text-center mt-3 bg-red-600 text-white font-bold py-2 rounded">
                   🚨 CALL 911 (FREE)
@@ -139,7 +139,7 @@ export default function SumbongSafe() {
                   type="button"
                   className="w-full bg-slate-800 text-white font-bold py-3 rounded"
                 >
-                  📋 COPY KEY
+                  COPY KEY
                 </button>
                 <button 
                   type="button"

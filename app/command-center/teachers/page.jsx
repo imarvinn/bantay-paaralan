@@ -11,18 +11,28 @@ export default function TeacherManagement() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [teacherEmail, setTeacherEmail] = useState('');
+  
+  // 🕒 Live Clock State
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // 🔒 SECURITY CHECK
+  // 🕒 LIVE CLOCK TICKER
   useEffect(() => {
-    const checkUser = async () => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 🔒 SECURITY CHECK & INITIAL FETCH
+  useEffect(() => {
+    const checkUserAndFetch = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login'); 
-      } else {
-        fetchRooms();
+        return;
       }
+      fetchRooms();
     };
-    checkUser();
+    
+    checkUserAndFetch();
   }, [router]);
 
   const fetchRooms = async () => {
@@ -42,7 +52,6 @@ export default function TeacherManagement() {
     setIsSubmitting(true);
     const formattedId = newRoom.trim().toLowerCase().replace(/\s+/g, '-');
 
-    // 🆕 Now we insert both the room ID and the teacher's email
     const { error } = await supabase
       .from('room_status')
       .insert([{ 
@@ -74,7 +83,7 @@ export default function TeacherManagement() {
     if (error) {
       console.error("Error deleting room:", error);
     } else {
-      fetchRooms(); // Refresh the list
+      fetchRooms(); 
     }
   };
 
@@ -87,12 +96,26 @@ export default function TeacherManagement() {
           <h1 className="text-3xl font-bold uppercase tracking-widest text-blue-500">CDRRMO Admin</h1>
           <h2 className="text-xl text-gray-400 mt-1">Classroom Provisioning & Management</h2>
         </div>
-        <button 
-          onClick={() => router.push('/command-center')}
-          className="bg-gray-800 hover:bg-gray-700 text-white py-2 px-4 rounded border border-gray-700 transition-colors"
-        >
-          ⬅ Back to Live Feed
-        </button>
+        
+        <div className="flex items-center gap-4">
+          {/* 🕒 LIVE CLOCK DISPLAY */}
+          <div className="text-right bg-gray-900 border border-gray-800 px-4 py-2 rounded-lg">
+            <div className="text-xs font-mono text-blue-400 font-bold uppercase tracking-wider">
+              {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div className="text-sm font-mono text-green-400 font-bold mt-0.5 flex items-center justify-end gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              {currentTime.toLocaleTimeString()}
+            </div>
+          </div>
+
+          <button 
+            onClick={() => router.push('/command-center')}
+            className="bg-gray-800 hover:bg-gray-700 text-white py-2.5 px-4 rounded border border-gray-700 transition-colors h-fit text-sm font-bold"
+          >
+            ⬅ Back to Live Feed
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -112,7 +135,6 @@ export default function TeacherManagement() {
                 required
               />
             </div>
-            {/* 🆕 THIS IS THE NEW EMAIL INPUT */}
             <div>
               <label className="block text-xs text-gray-500 mb-1">Teacher's Assigned Email</label>
               <input 
